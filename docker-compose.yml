@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: serverpulse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-serverpulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_this_password}
+      POSTGRES_DB: ${POSTGRES_DB:-serverpulse}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-serverpulse} -d ${POSTGRES_DB:-serverpulse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: serverpulse-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/targets:/etc/prometheus/targets:ro
+      - prometheus_data:/prometheus
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.0
+    container_name: serverpulse-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+
+  api:
+    build:
+      context: ./backend
+    container_name: serverpulse-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://serverpulse:change_this_password@db:5432/serverpulse}
+      PROMETHEUS_URL: http://prometheus:9090
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./prometheus/targets:/etc/prometheus/targets
+    depends_on:
+      db:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  prometheus_data:

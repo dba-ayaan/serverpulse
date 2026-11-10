@@ -1,0 +1,12 @@
+[
+  {
+    "targets": [
+      "node-exporter:9100"
+    ],
+    "labels": {
+      "server_id": "1",
+      "server_name": "Docker Linux VM",
+      "environment": "DEV"
+    }
+  }
+]
